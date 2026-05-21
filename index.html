@@ -127,26 +127,24 @@
       <button class="copy-code-btn" onclick="copyCode()">نسخ</button>
 <pre>const GEMINI_KEY = "YOUR_GEMINI_KEY";
 
-function doPost(e) {
+function doGet(e) {
   try {
-    var body = JSON.parse(e.postData.contents);
-
     // حفظ في Sheets
-    if (body.action === "save") {
-      var sheet = SpreadsheetApp.openById(body.sheetId).getActiveSheet();
+    if (e.parameter.action === "save") {
+      var sheet = SpreadsheetApp.openById(e.parameter.sheetId).getActiveSheet();
       sheet.appendRow([
         new Date(),
-        body.tone,
-        body.originalText,
-        body.hook,
-        body.rewrite,
-        body.imagePrompt
+        decodeURIComponent(e.parameter.tone        || ""),
+        decodeURIComponent(e.parameter.originalText|| ""),
+        decodeURIComponent(e.parameter.hook        || ""),
+        decodeURIComponent(e.parameter.rewrite     || ""),
+        decodeURIComponent(e.parameter.imagePrompt || "")
       ]);
       return respond({ status: "saved" });
     }
 
     // توليد المحتوى عبر Gemini
-    var prompt = body.prompt;
+    var prompt = decodeURIComponent(e.parameter.prompt || "");
     var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + GEMINI_KEY;
     var res = UrlFetchApp.fetch(url, {
       method: "post",
@@ -328,10 +326,8 @@ function respond(data) {
 المحتوى: ${text}`;
 
     try {
-      const res  = await fetch(appsUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt })
+      const res  = await fetch(appsUrl + '?prompt=' + encodeURIComponent(prompt), {
+        method: 'GET'
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -367,12 +363,16 @@ function respond(data) {
     saveBtn.innerHTML = '<span>⏳</span> جارٍ الحفظ...';
 
     try {
-      await fetch(appsUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'save', sheetId, ...lastResult })
+      const params = new URLSearchParams({
+        action: 'save',
+        sheetId,
+        tone:         lastResult.tone,
+        originalText: lastResult.originalText,
+        hook:         lastResult.hook,
+        rewrite:      lastResult.rewrite,
+        imagePrompt:  lastResult.imagePrompt
       });
+      await fetch(appsUrl + '?' + params.toString(), { method: 'GET' });
       toast.textContent = '✅ تم الحفظ في Google Sheets!';
       toast.className   = 'save-toast success';
     } catch {
