@@ -156,6 +156,9 @@ function doGet(e) {
       muteHttpExceptions: true
     });
     var data = JSON.parse(res.getContentText());
+    if (!data.candidates || !data.candidates[0]) {
+      return respond({ error: "Gemini error: " + JSON.stringify(data) });
+    }
     var text = data.candidates[0].content.parts[0].text;
     return respond({ text: text });
 
